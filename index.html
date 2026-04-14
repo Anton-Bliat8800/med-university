@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор тренировочного ЧСС</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #409eff;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #409eff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #66b1ff;
+        }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f0f9eb;
+            border: 1px solid #e1f3d8;
+            display: none;
+        }
+        .result-title {
+            color: #67c23a;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .result-value {
+            font-size: 24px;
+            color: #303133;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Расчет тренировочного ЧСС</h2>
+
+    <div class="form-group">
+        <label for="method">Выберите метод расчета:</label>
+        <select id="method" onchange="toggleFields()">
+            <option value="karvonen">Формула Карвонена</option>
+            <option value="tshkh">Метод по тесту 6-минутной ходьбы (ТШХ)</option>
+            <option value="vem">Метод по ЧСС макс (Велоэргометрия)</option>
+            <option value="ekg_tshkh">Метод по ЧСС макс (ЭКГ-ТШХ)</option>
+        </select>
+    </div>
+
+    <!-- Поля для ЧСС покоя (нужны для первых двух методов) -->
+    <div id="rest_hr_group" class="form-group">
+        <label for="hr_rest">ЧСС в покое (уд/мин):</label>
+        <input type="number" id="hr_rest" placeholder="Например: 70">
+    </div>
+
+    <!-- Поля для ЧСС макс / пиковой -->
+    <div id="target_hr_group" class="form-group">
+        <label id="target_label" for="hr_target">Максимальная ЧСС (уд/мин):</label>
+        <input type="number" id="hr_target" placeholder="Например: 150">
+    </div>
+
+    <!-- Интенсивность (для первых двух методов) -->
+    <div id="intensity_group" class="form-group">
+        <label for="intensity">Зона интенсивности:</label>
+        <select id="intensity">
+            <option value="red">Красная зона (I = 0.40–0.55)</option>
+            <option value="yellow">Жёлтая зона (I = 0.50–0.65)</option>
+            <option value="green">Зелёная зона (I = 0.60–0.80)</option>
+        </select>
+    </div>
+
+    <button onclick="calculate()">Рассчитать</button>
+
+    <div id="resultBox" class="result-box">
+        <div class="result-title">Результат:</div>
+        <div id="resultValue" class="result-value"></div>
+    </div>
+</div>
+
+<script>
+    function toggleFields() {
+        const method = document.getElementById('method').value;
+        const restGroup = document.getElementById('rest_hr_group');
+        const intensityGroup = document.getElementById('intensity_group');
+        const targetLabel = document.getElementById('target_label');
+        const resultBox = document.getElementById('resultBox');
+
+        resultBox.style.display = 'none';
+
+        if (method === 'karvonen') {
+            restGroup.classList.remove('hidden');
+            intensityGroup.classList.remove('hidden');
+            targetLabel.innerText = 'Максимальная ЧСС при тестировании (уд/мин):';
+        } else if (method === 'tshkh') {
+            restGroup.classList.remove('hidden');
+            intensityGroup.classList.remove('hidden');
+            targetLabel.innerText = 'ЧСС на 6-й минуте ТШХ (уд/мин):';
+        } else if (method === 'vem') {
+            restGroup.classList.add('hidden');
+            intensityGroup.classList.add('hidden');
+            targetLabel.innerText = 'Максимальная ЧСС при ВЭМ (уд/мин):';
+        } else if (method === 'ekg_tshkh') {
+            restGroup.classList.add('hidden');
+            intensityGroup.classList.add('hidden');
+            targetLabel.innerText = 'Максимальная ЧСС при ЭКГ-ТШХ (уд/мин):';
+        }
+    }
+
+    function calculate() {
+        const method = document.getElementById('method').value;
+        const hrRest = parseFloat(document.getElementById('hr_rest').value);
+        const hrTarget = parseFloat(document.getElementById('hr_target').value);
+        const intensityZone = document.getElementById('intensity').value;
+        
+        let result = "";
+
+        if (isNaN(hrTarget)) {
+            alert("Пожалуйста, введите корректные числа");
+            return;
+        }
+
+        if (method === 'karvonen' || method === 'tshkh') {
+            if (isNaN(hrRest)) {
+                alert("Введите ЧСС покоя");
+                return;
+            }
+
+            let iLow, iHigh;
+            if (intensityZone === 'red') { iLow = 0.40; iHigh = 0.55; }
+            else if (intensityZone === 'yellow') { iLow = 0.50; iHigh = 0.65; }
+            else { iLow = 0.60; iHigh = 0.80; }
+
+            let thrLow = Math.round(hrRest + (hrTarget - hrRest) * iLow);
+            let thrHigh = Math.round(hrRest + (hrTarget - hrRest) * iHigh);
+            result = `Коридор ЧССтр: от ${thrLow} до ${thrHigh} уд/мин`;
+
+        } else if (method === 'vem') {
+            let thrLow = Math.round(hrTarget * 0.60);
+            let thrHigh = Math.round(hrTarget * 0.70);
+            result = `Коридор ЧССтр (60-70%): от ${thrLow} до ${thrHigh} уд/мин`;
+
+        } else if (method === 'ekg_tshkh') {
+            let thrLow = Math.round(hrTarget * 0.75);
+            let thrHigh = Math.round(hrTarget * 0.80);
+            result = `Коридор ЧССтр (75-80%): от ${thrLow} до ${thrHigh} уд/мин`;
+        }
+
+        const resultBox = document.getElementById('resultBox');
+        const resultValue = document.getElementById('resultValue');
+        resultValue.innerText = result;
+        resultBox.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
